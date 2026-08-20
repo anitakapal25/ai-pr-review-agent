@@ -1,0 +1,20 @@
+# PR configuration for ai-pr-review-agent
+# These settings control PR ingestion and review behavior
+
+# Base directory for ingested PR metadata
+ingest_dir: ./ingested
+
+# Default lint check configuration
+lint:
+  check_trailing_whitespace: true
+  check_import_sort: true
+
+# Review policy configuration
+policy:
+  # Minimum confidence threshold for LLM findings
+  min_confidence: medium
+  # Whether to auto-apply non-critical findings
+  auto_apply: false
+  # Escalation requirements
+  critical_escalation: true
+  irreversible_escalation: true

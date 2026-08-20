@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Genesis framework (local project state)
+.genesis/
+
+# Generated artifacts
+ingested/
+
+# Virtual environments
+.venv/
+env/
+
+# Claude Code settings (local only)
+.claude/
