@@ -1,0 +1,7 @@
+[]
+{"pr_name": "pr_001", "finding_title": "Bare except clause", "rating": 5, "comment": "Very useful finding", "confirmed_useful": null, "timestamp": "C:\\Users\\Anita\\Desktop\\ai-pr-review-agent"}
+{"pr_name": "pr_001", "finding_title": "Hardcoded credential", "rating": 4, "comment": "Good catch", "confirmed_useful": null, "timestamp": "C:\\Users\\Anita\\Desktop\\ai-pr-review-agent"}
+{"pr_name": "pr_001", "finding_title": "Bare except clause", "rating": 5, "comment": "Very useful finding", "confirmed_useful": null, "timestamp": "C:\\Users\\Anita\\Desktop\\ai-pr-review-agent"}
+{"pr_name": "pr_001", "finding_title": "Hardcoded credential", "rating": 4, "comment": "Good catch", "confirmed_useful": null, "timestamp": "C:\\Users\\Anita\\Desktop\\ai-pr-review-agent"}
+{"pr_name": "pr_001", "finding_title": "Bare except clause", "rating": 5, "comment": "Very useful finding", "confirmed_useful": null, "timestamp": "C:\\Users\\Anita\\Desktop\\ai-pr-review-agent"}
+{"pr_name": "pr_001", "finding_title": "Hardcoded credential", "rating": 4, "comment": "Good catch", "confirmed_useful": null, "timestamp": "C:\\Users\\Anita\\Desktop\\ai-pr-review-agent"}

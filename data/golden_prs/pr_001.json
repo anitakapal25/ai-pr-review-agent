@@ -1,0 +1,31 @@
+{
+  "pr_name": "pr_001",
+  "findings": [
+    {
+      "title": "Bare except clause",
+      "severity": "medium",
+      "confidence": 0.6,
+      "evidence_chain": [
+        "test.py",
+        5,
+        "except:"
+      ],
+      "reviewer_notes": "test"
+    },
+    {
+      "title": "Potential hardcoded credential",
+      "severity": "high",
+      "confidence": 0.85,
+      "evidence_chain": [
+        "config.py",
+        10,
+        "__secret__"
+      ],
+      "reviewer_notes": "test"
+    }
+  ],
+  "metadata": {
+    "description": "Golden PR pr_001 for evaluation",
+    "created": "C:\\Users\\Anita\\Desktop\\ai-pr-review-agent"
+  }
+}
