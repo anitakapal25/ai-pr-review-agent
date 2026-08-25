@@ -1,4 +1,4 @@
-# reviewpr_review_demo.py - Test file for AI PR Review Agent
+# ai_pr_review_demo.py - Test file for AI PR Review Agent
 
 # 1. Bare except clause (will be flagged)
 def fetch_data():
