@@ -11,6 +11,7 @@ grounding before surfacing.
 
 import argparse
 import sys
+import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -129,23 +130,28 @@ def main():
     # Generate findings with evidence anchoring
     findings = generate_findings(args.pr)
 
-    # Output findings in structured format
-    print(f"Review of PR {args.pr}:")
-    print(f"=" * 50)
-    print(f"Total findings: {len(findings)}")
-    print()
-
+    # Format feedback
+    feedback_lines = [f"### AI PR Review Findings (PR #{args.pr})", ""]
     for i, f in enumerate(findings, 1):
         severity_pill = {"high": "🔴", "medium": "🟡", "low": "🟢"}
-        print(f"  {i}. [{severity_pill.get(f['severity'], '?' )}] {f['title']}")
-        print(f"     Severity: {f['severity']} (confidence: {f['confidence']:.2f})")
-        print(f"     Evidence: {f['evidence_chain'][0]}:{f['evidence_chain'][1]}")
-        print(f"     Hunk: {f['evidence_chain'][2]}")
-        print(f"     Notes: {f['reviewer_notes']}")
-        print()
+        feedback_lines.append(f"{i}. {severity_pill.get(f['severity'], '?' )} **{f['title']}**")
+        feedback_lines.append(f"   - Severity: {f['severity']} (confidence: {f['confidence']:.2f})")
+        feedback_lines.append(f"   - Location: `{f['evidence_chain'][0]}:{f['evidence_chain'][1]}`")
+        feedback_lines.append(f"   - Notes: {f['reviewer_notes']}")
+        feedback_lines.append("")
 
-    # Exit with 0 regardless — the reviewer's job is to surface findings,
-    # not to determine pass/fail. The G5 verify gate handles approval.
+    feedback_body = "\n".join(feedback_lines)
+
+    # If running in GitHub Actions, post to GitHub
+    repo_full_name = os.getenv("GITHUB_REPOSITORY")
+    if repo_full_name:
+        from ai_pr_review_agent.github_client import GitHubClient
+        client = GitHubClient(repo_full_name)
+        client.post_comment(int(args.pr), feedback_body)
+    else:
+        # Fallback to terminal output
+        print(feedback_body)
+
     sys.exit(0)
 
 
