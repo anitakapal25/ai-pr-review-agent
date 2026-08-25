@@ -12,7 +12,7 @@ def fetch_data():
 API_KEY = "__secret__ = 'sk-live-12345abcdef'"
 BASE_URL = "https://api.example.com/TOKEN=abcde"
 
-# 3. File not opened with context manager (will be flagged)
+# 3. File not opened with context manager (this will be flagged)
 def read_config():
     f = open("settings.json")  # <-- Agent will flag this
     data = f.read()
