@@ -1,153 +1,79 @@
-"""Single LLM reviewer module for ai-pr-review-agent.
+"""Deterministic review of added PR lines with verifiable evidence."""
 
-This module implements a grounded, evidence-anchored LLM reviewer that
-surfaces findings with verifiable evidence chains. Each finding is anchored
-to specific codebase locations (file paths, line numbers, diff hunks) rather
-than presented as authoritative based on LLM output alone.
+from __future__ import annotations
 
-LLM outputs are treated as potentially incorrect — findings require evidence
-grounding before surfacing.
-"""
-
-import argparse
-import sys
+import re
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+
+from ai_pr_review_agent.models import Finding, PullRequest
+from ai_pr_review_agent.storage import artifact_path, read_json
+
+HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+SECRET_ASSIGNMENT = re.compile(
+    r"(?i)\b(api[_-]?key|password|secret|token)\b\s*=\s*['\"][^'\"]{8,}['\"]"
+)
 
 
-# Failure mode: LLM hallucination — fabricating issues that don't exist
-# Mitigation: Every finding requires evidence_chain before surfacing
-# Design decision: Evidence chain [filepath, line_number, diff_hunk] must
-# be independently verifiable by reading the cited code
-
-
-def generate_findings(pr_id: str) -> List[Dict[str, Any]]:
-    """Generate LLM-reviewer findings anchored to evidence.
-
-    Returns a list of findings, each with:
-    - title: Short description of the finding
-    - severity: high / medium / low confidence level
-    - evidence_chain: [filepath, line_number, diff_hunk] — independently verifiable
-    - confidence: numeric 0.0–1.0 derived from evidence quality
-    - reviewer_notes: Why this pattern was flagged
-    """
-    findings = []
-
-    # Read ingested PR metadata if available
-    ingest_dir = Path(".") / "ingested"
-    metadata_file = ingest_dir / f"pr_{pr_id}_metadata.json"
-
-    # Read the PR changed files from metadata or discover them
-    changed_files = []
-    if metadata_file.exists():
-        try:
-            import json
-            # Try double-quote JSON first
-            metadata = json.loads(metadata_file.read_text(encoding="utf-8"))
-            changed_files = metadata.get("changed_files", [])
-        except json.JSONDecodeError:
-            # Fallback: metadata not proper JSON; use empty changed_files
-            # and proceed to discover Python files below
-            changed_files = []
-    # If metadata reading failed or no changed_files, discover Python files
-    if not changed_files:
-        changed_files = [f.name for f in Path(".").glob("*.py")]
-
-    for filepath in changed_files:
-        try:
-            path = Path(filepath)
-            if not path.exists():
-                continue
-
-            content = path.read_text(encoding="utf-8")
-            lines = content.split("\n")
-
-            # Review each line for common patterns
-            for i, line in enumerate(lines, 1):
-                # Pattern: bare except (catches all exceptions)
-                if "except:" in line and "as" not in line:
-                    findings.append({
-                        "title": "Bare except clause",
-                        "severity": "medium",
-                        "evidence_chain": [filepath, i, f"'{line}'"],
-                        "confidence": 0.6,
-                        "reviewer_notes": "Bare except catches all exceptions including KeyboardInterrupt and SystemExit. "
-                                       "Specify exception types for safer error handling.",
-                    })
-
-                # Pattern: hardcoded secrets
-                if "__secret__" in line or "PASSWORD" in line.upper() or "TOKEN" in line.upper():
-                    findings.append({
-                        "title": "Potential hardcoded credential",
-                        "severity": "high",
-                        "evidence_chain": [filepath, i, f"'{line}'"],
-                        "confidence": 0.85,
-                        "reviewer_notes": "Possible hardcoded secret in source. Move to environment variables or secret manager.",
-                    })
-
-                # Pattern: open() without with-statement
-                if "open(" in line and "with" not in line.split("open(")[-1][:5]:
-                    findings.append({
-                        "title": "File not opened with context manager",
-                        "severity": "medium",
-                        "evidence_chain": [filepath, i, f"'{line}'"],
-                        "confidence": 0.7,
-                        "reviewer_notes": "File handles should use 'with' statement to ensure proper closure.",
-                    })
-
-        except Exception:
-            # Skip files that can't be read
+def added_lines(patch: str):
+    """Yield (new-file line number, text) from a unified diff patch."""
+    new_line: int | None = None
+    for raw_line in patch.splitlines():
+        match = HUNK_HEADER.match(raw_line)
+        if match:
+            new_line = int(match.group(1))
             continue
-
-    # If no findings generated from code patterns, add a generic placeholder
-    # to demonstrate the review pipeline works — but mark it for human escalation
-    # since we have no evidence to anchor it to
-    if not findings:
-        findings.append({
-            "title": "No code patterns reviewed — empty PR or unsupported language",
-            "severity": "low",
-            "evidence_chain": ["<no-files-reviewed>", 0, "no code files reviewed"],
-            "confidence": 0.1,
-            "reviewer_notes": "No reviewgable code patterns found. This finding triggers "
-                           "human escalation per invariant: uncertain findings must be "
-                           "escalated rather than auto-surfaced.",
-        })
-
-    # Sort by severity (high first), then by confidence (high first)
-    severity_order = {"high": 0, "medium": 1, "low": 2}
-    findings.sort(key=lambda f: (severity_order.get(f["severity"], 99), -f["confidence"]))
-
-    return findings
+        if new_line is None or raw_line.startswith("\\ No newline"):
+            continue
+        if raw_line.startswith("+") and not raw_line.startswith("+++"):
+            yield new_line, raw_line[1:]
+            new_line += 1
+        elif raw_line.startswith("-") and not raw_line.startswith("---"):
+            continue
+        else:
+            new_line += 1
 
 
-def main():
-    """Main entry point for the LLM reviewer."""
-    parser = argparse.ArgumentParser(description="AI PR Review Agent — review PR")
-    parser.add_argument("--pr", required=True, help="PR identifier (e.g., number or URL)")
-    args = parser.parse_args()
+def review_pull_request(pr: PullRequest) -> list[Finding]:
+    findings: list[Finding] = []
+    for changed_file in pr.files:
+        if not changed_file.patch:
+            continue
+        for line_number, line in added_lines(changed_file.patch):
+            stripped = line.strip()
+            if re.match(r"^except\s*:\s*(#.*)?$", stripped):
+                findings.append(
+                    Finding(
+                        "PY001",
+                        "Bare except clause",
+                        "medium",
+                        0.99,
+                        changed_file.filename,
+                        line_number,
+                        line,
+                        "Catch an explicit exception type so cancellation and exit signals propagate.",
+                    )
+                )
+            if SECRET_ASSIGNMENT.search(line) and not stripped.startswith("#"):
+                findings.append(
+                    Finding(
+                        "SEC001",
+                        "Potential hardcoded credential",
+                        "high",
+                        0.9,
+                        changed_file.filename,
+                        line_number,
+                        line,
+                        "Remove the value from source and rotate it if it is active.",
+                    )
+                )
+    return sorted(findings, key=lambda item: (item.path, item.line, item.rule_id))
 
-    # Generate findings with evidence anchoring
-    findings = generate_findings(args.pr)
 
-    # Output findings in structured format
-    print(f"Review of PR {args.pr}:")
-    print(f"=" * 50)
-    print(f"Total findings: {len(findings)}")
-    print()
-
-    for i, f in enumerate(findings, 1):
-        severity_pill = {"high": "🔴", "medium": "🟡", "low": "🟢"}
-        print(f"  {i}. [{severity_pill.get(f['severity'], '?' )}] {f['title']}")
-        print(f"     Severity: {f['severity']} (confidence: {f['confidence']:.2f})")
-        print(f"     Evidence: {f['evidence_chain'][0]}:{f['evidence_chain'][1]}")
-        print(f"     Hunk: {f['evidence_chain'][2]}")
-        print(f"     Notes: {f['reviewer_notes']}")
-        print()
-
-    # Exit with 0 regardless — the reviewer's job is to surface findings,
-    # not to determine pass/fail. The G5 verify gate handles approval.
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()
+def generate_findings(pr_id: str) -> list[dict]:
+    """Compatibility API: load an ingested PR and return serializable findings."""
+    try:
+        number = int(pr_id)
+    except ValueError as exc:
+        raise ValueError("PR identifier must be a positive integer") from exc
+    metadata = read_json(artifact_path(Path("ingested"), number, "metadata"))
+    return [finding.to_dict() for finding in review_pull_request(PullRequest.from_dict(metadata))]

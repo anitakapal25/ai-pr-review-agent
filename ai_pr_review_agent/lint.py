@@ -8,14 +8,12 @@ from pathlib import Path
 def check_trailing_whitespace():
     """Check for trailing whitespace in Python files."""
     errors = 0
-    for f in Path(".").glob("*.py"):
-        content = f.read_text(encoding="utf-8")
-        if content.endswith("\n") and content.rstrip("\n") != content:
-            for i, line in enumerate(content.split("\n"), 1):
-                if line != line.rstrip() and line:
-                    # Check if trailing whitespace exists before newline
-                    if line != line.rstrip():
-                        errors += 1
+    for file_path in Path(".").rglob("*.py"):
+        if any(part.startswith(".") for part in file_path.parts):
+            continue
+        for line in file_path.read_text(encoding="utf-8").splitlines():
+            if line != line.rstrip():
+                errors += 1
     return errors
 
 
@@ -28,7 +26,7 @@ def main():
     """Run mechanical lint checks."""
     parser = argparse.ArgumentParser(description="AI PR Review Agent — lint PR")
     parser.add_argument("--pr", required=True, help="PR identifier (e.g., number or URL)")
-    args = parser.parse_args()
+    parser.parse_args()
 
     # Run checks
     tw_errors = check_trailing_whitespace()

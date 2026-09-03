@@ -3,8 +3,7 @@ __pycache__/
 *.pyc
 .env
 
-# Genesis framework (local project state)
-.genesis/
+# Genesis lifecycle records are intentionally version-controlled.
 
 # Generated artifacts
 ingested/
@@ -15,3 +14,9 @@ env/
 
 # Claude Code settings (local only)
 .claude/
+
+# Local tool artifacts
+Microsoft/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

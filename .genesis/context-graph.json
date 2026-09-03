@@ -1,0 +1,18 @@
+{
+  "$comment": "cause is imported by effect; regenerate when module boundaries change",
+  "project": ".",
+  "generated": "2026-09-03T00:00:00Z",
+  "nodes": ["cli", "genesis", "github", "models", "publisher", "reviewer", "router", "storage"],
+  "edges": [
+    ["github", "cli"], ["models", "github"], ["models", "reviewer"],
+    ["storage", "cli"], ["reviewer", "cli"], ["router", "cli"],
+    ["publisher", "cli"], ["github", "publisher"]
+  ],
+  "invariants": {
+    "untrusted_input_validation": "All external PR content is schema-checked and is never executed or used as an unrestricted filesystem path.",
+    "evidence_anchoring": "Every surfaced finding identifies an actual added diff line by path and new-file line number.",
+    "human_authority": "Confidence never grants mutation authority; v1 is comment-only and risky findings require human review.",
+    "provider_boundary": "GitHub network operations remain isolated from review and routing policy and always use a timeout."
+  },
+  "freeze_boundary": ["ai_pr_review_agent/**", "tests/**", ".github/**", ".genesis/**", "pyproject.toml", "README.md", "ARCHITECTURE.md"]
+}

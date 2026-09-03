@@ -8,20 +8,19 @@ failure mode → design decision → implementation → test → observable evid
 """
 
 import json
-import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # Constants
 GOLDEN_DIR = Path(".") / "data" / "golden_prs"
 EVALUATION_DIR = Path(".") / "data" / "evaluation"
 PRECISION_THRESHOLD = 0.75  # Minimum precision to pass gate
-RECALL_THRESHOLD = 0.70     # Minimum recall to pass gate
-USEFULNESS_THRESHOLD = 3    # Minimum average usefulness (1-5)
-TOKEN_BUDGET = 50000        # Per-milestone budget
+RECALL_THRESHOLD = 0.70  # Minimum recall to pass gate
+USEFULNESS_THRESHOLD = 3  # Minimum average usefulness (1-5)
+TOKEN_BUDGET = 50000  # Per-milestone budget
 
 
-def init_golden_pr(pr_name: str, expected_findings: List[Dict[str, Any]]) -> None:
+def init_golden_pr(pr_name: str, expected_findings: list[dict[str, Any]]) -> None:
     """Initialize a golden PR file for evaluation.
 
     Creates the golden PR JSON under `data/golden_prs/` so that
@@ -50,7 +49,7 @@ def init_golden_pr(pr_name: str, expected_findings: List[Dict[str, Any]]) -> Non
         json.dump(golden_record, f, indent=2, sort_keys=False)
 
 
-def load_golden_pr(pr_name: str) -> Optional[Dict[str, Any]]:
+def load_golden_pr(pr_name: str) -> dict[str, Any] | None:
     """Load a golden PR with expected findings.
 
     Golden PRs are the ground truth against which the reviewer is evaluated.
@@ -69,9 +68,9 @@ def load_golden_pr(pr_name: str) -> Optional[Dict[str, Any]]:
 
 
 def compute_metrics(
-    generated_findings: List[Dict[str, Any]],
-    golden_findings: List[Dict[str, Any]],
-) -> Dict[str, float]:
+    generated_findings: list[dict[str, Any]],
+    golden_findings: list[dict[str, Any]],
+) -> dict[str, float]:
     """Compute precision, recall, and usefulness between generated and golden findings.
 
     Args:
@@ -133,7 +132,7 @@ def compute_metrics(
     }
 
 
-def evaluate_pr(pr_name: str) -> Dict[str, Any]:
+def evaluate_pr(pr_name: str) -> dict[str, Any]:
     """Evaluate a PR against its golden version and return a full report.
 
     Args:
@@ -218,8 +217,8 @@ def evaluate_pr(pr_name: str) -> Dict[str, Any]:
 
 def check_drift(
     current_tokens: int,
-    previous_tokens_log: List[int],
-) -> Dict[str, Any]:
+    previous_tokens_log: list[int],
+) -> dict[str, Any]:
     """Check for token-budget drift and iteration convergence.
 
     Args:
@@ -274,7 +273,7 @@ def check_drift(
     }
 
 
-def save_evaluation(pr_name: str, result: Dict[str, Any]) -> None:
+def save_evaluation(pr_name: str, result: dict[str, Any]) -> None:
     """Persist an evaluation result to disk.
 
     Creates the evaluation directory and writes a JSON report.

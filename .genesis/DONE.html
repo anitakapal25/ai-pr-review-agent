@@ -1,0 +1,8 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>AI PR Review Agent — Definition of Done</title></head>
+<body><main><h1>AI PR Review Agent — Definition of Done</h1>
+<p>Canonical operational state: <code>.genesis/state.yaml</code>.</p>
+<h2>Cognitive job</h2><p>Accept a GitHub pull request, review added lines, publish evidence-grounded feedback in GitHub, and preserve human authority. PR content is untrusted and the agent is comment-only.</p>
+<h2>Completion gates</h2><ul><li>Demo command succeeds.</li><li>Lint, tests, compilation, and lifecycle validation pass.</li><li>Every finding anchors to an added diff line.</li><li>Provider calls are bounded and isolated.</li><li>Evidence artifacts are recorded.</li><li>An independent verifier records APPROVE with invariant analysis.</li></ul>
+<h2>Status</h2><p>M0–M4 are active with local quality evidence. An authenticated GitHub demo and independent L4 verification remain pending. M5 is planned.</p>
+<p>Architecture rationale: <code>decisions/0001-github-native-cli-core.md</code>.</p></main></body></html>
+

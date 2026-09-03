@@ -1,0 +1,6 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Implementation Notes</title></head>
+<body><main><h1>Implementation Notes</h1><p>Updated 2026-09-03. Canonical status is in <code>state.yaml</code>.</p>
+<h2>Live implementation</h2><ul><li>Installable Python CLI and typed domain models.</li><li>Validated, paginated GitHub ingestion with timeouts and retries.</li><li>Added-line deterministic review with evidence.</li><li>Comment-only confidence routing.</li><li>Idempotent GitHub summary publication.</li><li>Genesis lifecycle validation and CI workflow.</li></ul>
+<h2>Verification</h2><p>Ruff, 8 unit tests, 4 adversarial tests, compilation, CLI help, and Genesis validation pass. Authenticated provider testing and L4 independent verification are pending.</p>
+<h2>Decision</h2><p>GitHub is the UI and the CLI is the reusable core. See <code>decisions/0001-github-native-cli-core.md</code>.</p>
+<h2>Next</h2><ol><li>Run against a designated test PR.</li><li>Record independent verification.</li><li>Begin M5 evaluation after M0–M4 close.</li></ol></main></body></html>

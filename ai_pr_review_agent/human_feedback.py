@@ -10,11 +10,10 @@ failure mode → design decision → implementation → test → observable evid
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from ai_pr_review_agent.evaluation import PRECISION_THRESHOLD, RECALL_THRESHOLD
-
+from ai_pr_review_agent.evaluation import USEFULNESS_THRESHOLD
 
 # Paths
 FEEDBACK_DIR = Path(".") / "data" / "human_feedback"
@@ -35,7 +34,7 @@ def record_feedback(
     finding_title: str,
     rating: int,
     comment: str = "",
-    confirmed_useful: Optional[bool] = None,
+    confirmed_useful: bool | None = None,
 ) -> None:
     """Record a human rating for a specific finding.
 
@@ -58,7 +57,9 @@ def record_feedback(
         "rating": rating,
         "comment": comment,
         "confirmed_useful": confirmed_useful,
-        "timestamp": str(Path.cwd()),  # In production: ISO-8601 datetime
+        "timestamp": __import__("datetime")
+        .datetime.now(__import__("datetime").timezone.utc)
+        .isoformat(),
     }
 
     # Append to the JSONL database
@@ -66,7 +67,7 @@ def record_feedback(
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
-def compute_usefulness_from_feedback(pr_name: str) -> Optional[float]:
+def compute_usefulness_from_feedback(pr_name: str) -> float | None:
     """Compute the average usefulness rating for a PR from the feedback DB.
 
     Returns None if no feedback exists yet.
@@ -74,7 +75,7 @@ def compute_usefulness_from_feedback(pr_name: str) -> Optional[float]:
     if not FEEDBACK_DB.exists():
         return None
 
-    ratings: List[int] = []
+    ratings: list[int] = []
     with open(FEEDBACK_DB, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -97,7 +98,7 @@ def compute_usefulness_from_feedback(pr_name: str) -> Optional[float]:
     return round(avg, 2)
 
 
-def is_useful_enough(pr_name: str, threshold: Optional[float] = None) -> Optional[bool]:
+def is_useful_enough(pr_name: str, threshold: float | None = None) -> bool | None:
     """Check whether the average usefulness meets the project threshold.
 
     Args:
@@ -115,7 +116,7 @@ def is_useful_enough(pr_name: str, threshold: Optional[float] = None) -> Optiona
     return avg >= threshold
 
 
-def export_feedback_report(pr_name: str, output_path: Optional[Path] = None) -> Path:
+def export_feedback_report(pr_name: str, output_path: Path | None = None) -> Path:
     """Export a human-readable feedback report for a PR.
 
     Args:
@@ -128,8 +129,8 @@ def export_feedback_report(pr_name: str, output_path: Optional[Path] = None) -> 
     """
     init_feedback_db()
 
-    ratings: List[Dict[str, Any]] = []
-    comments: List[str] = []
+    ratings: list[dict[str, Any]] = []
+    comments: list[str] = []
     with open(FEEDBACK_DB, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
