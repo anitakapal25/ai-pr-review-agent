@@ -28,12 +28,36 @@ python -m ai_pr_review_agent genesis check
 Set `GITHUB_TOKEN` for GitHub operations. Ingested data and generated findings are written under
 `ingested/`, which is intentionally ignored by Git.
 
+## Use from another repository
+
+After release `v1.0.0` is verified and tagged, add this workflow to each owned repository:
+
+```yaml
+name: Central PR Review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    uses: anitakapal25/ai-pr-review-agent/.github/workflows/reusable-pr-review.yml@v1.0.0
+```
+
+Optionally add `pr-review.yaml` at the target repository root. Supported fields are
+`enabled_rules`, `exclude_paths`, and `max_inline_comments`. The central workflow cap always wins
+when it is lower than the repository setting.
+
 ## Safety defaults
 
 - PR text and patches are untrusted data.
 - Only GitHub API HTTPS endpoints are contacted.
 - Review operates on added diff lines, not arbitrary paths supplied by PR content.
 - Publishing creates or updates one summary comment; it does not apply patches.
+- Verified findings are posted against added lines as a grouped `COMMENT` review.
 - Critical, uncertain, and irreversible findings always require human review.
 
 ## Tests

@@ -116,3 +116,40 @@ class GitHubClient:
         return self._request(
             "PATCH", f"/repos/{repository}/issues/comments/{comment_id}", {"body": body}
         )
+
+    def list_review_comments(self, repository: str, number: int) -> list[dict[str, Any]]:
+        repository = self.validate_repository(repository)
+        comments: list[dict[str, Any]] = []
+        page = 1
+        while True:
+            query = urlencode({"per_page": 100, "page": page})
+            result = self._request("GET", f"/repos/{repository}/pulls/{number}/comments?{query}")
+            if not isinstance(result, list):
+                raise GitHubError("GitHub returned an invalid review-comments response")
+            comments.extend(item for item in result if isinstance(item, dict))
+            if len(result) < 100:
+                return comments
+            page += 1
+
+    def create_review(
+        self,
+        repository: str,
+        number: int,
+        head_sha: str,
+        comments: list[dict[str, Any]],
+        body: str,
+    ) -> dict[str, Any]:
+        repository = self.validate_repository(repository)
+        payload = {
+            "commit_id": head_sha,
+            "event": "COMMENT",
+            "body": body,
+            "comments": comments,
+        }
+        return self._request("POST", f"/repos/{repository}/pulls/{number}/reviews", payload)
+
+    def update_review_comment(self, repository: str, comment_id: int, body: str) -> dict[str, Any]:
+        repository = self.validate_repository(repository)
+        return self._request(
+            "PATCH", f"/repos/{repository}/pulls/comments/{comment_id}", {"body": body}
+        )

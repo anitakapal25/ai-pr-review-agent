@@ -1,10 +1,9 @@
 # CURRENT
 
 - active_loop: L1 BUILD
-- target: M0–M4 architecture foundation
-- status: active; quality gates pass, L4 independent verification pending
-- evidence: `.genesis/evidence/M0-M4/2026-09-03-quality-gates.md`
-- decision: GitHub-native interface with provider-independent CLI core; see ADR-0001
-- next_action: run an authenticated test against a designated GitHub PR, then perform L4 verification
-- blocker: no target GitHub PR and no independent verifier verdict
+- target: M6 central reusable reviewer with inline comments
+- status: active; implementation verification in progress
+- decision: reusable workflow pinned to v1.0.0; see ADR-0002
+- next_action: pass local gates, then validate inline behavior in this and a second owned repository
+- blocker: live multi-repository evidence and independent L4 verdict are pending
 

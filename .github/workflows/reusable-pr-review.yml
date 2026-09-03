@@ -1,0 +1,66 @@
+name: Reusable Central PR Review
+
+on:
+  workflow_call:
+    inputs:
+      config_path:
+        description: Repository-relative reviewer configuration path
+        required: false
+        type: string
+        default: pr-review.yaml
+      max_inline_comments:
+        description: Hard cap for inline comments in one run
+        required: false
+        type: number
+        default: 20
+      reviewer_ref:
+        description: Central reviewer release tag; overridden only by central self-tests
+        required: false
+        type: string
+        default: v1.0.0
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out caller repository
+        uses: actions/checkout@v4
+
+      - name: Check out central reviewer
+        uses: actions/checkout@v4
+        with:
+          repository: anitakapal25/ai-pr-review-agent
+          ref: ${{ inputs.reviewer_ref }}
+          path: .central-reviewer
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: .central-reviewer/pyproject.toml
+
+      - name: Install central reviewer
+        run: python -m pip install ./.central-reviewer
+
+      - name: Review pull request
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REVIEW_REPOSITORY: ${{ github.repository }}
+          REVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEW_CONFIG: ${{ inputs.config_path }}
+          REVIEW_MAX_COMMENTS: ${{ inputs.max_inline_comments }}
+        run: >-
+          python -m ai_pr_review_agent run
+          --repo "$REVIEW_REPOSITORY"
+          --pr "$REVIEW_PR_NUMBER"
+          --head-sha "$REVIEW_HEAD_SHA"
+          --config "$REVIEW_CONFIG"
+          --max-comments "$REVIEW_MAX_COMMENTS"
+          --publish

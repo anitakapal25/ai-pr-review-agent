@@ -8,10 +8,11 @@ import os
 from pathlib import Path
 from typing import Any
 
+from ai_pr_review_agent.config import load_config
 from ai_pr_review_agent.github import GitHubClient
 from ai_pr_review_agent.models import PullRequest
-from ai_pr_review_agent.publisher import publish_summary
-from ai_pr_review_agent.reviewer import review_pull_request
+from ai_pr_review_agent.publisher import publish_review, publish_summary
+from ai_pr_review_agent.reviewer import analyze_pull_request, review_pull_request, validate_findings
 from ai_pr_review_agent.router import route_finding
 from ai_pr_review_agent.storage import artifact_path, read_json, write_json
 
@@ -48,7 +49,13 @@ def command_review(args):
 def command_route(args):
     routes = []
     for finding in _load_list(args.pr, "findings"):
-        routes.append({"finding_title": finding.get("title", "unknown"), **route_finding(finding)})
+        routes.append(
+            {
+                "finding_title": finding.get("title", "unknown"),
+                "fingerprint": finding.get("fingerprint", ""),
+                **route_finding(finding),
+            }
+        )
     write_json(artifact_path(INGEST_DIR, args.pr, "routes"), routes)
     print(json.dumps(routes, indent=2, ensure_ascii=False))
 
@@ -62,6 +69,53 @@ def command_publish(args):
         _load_list(args.pr, "routes"),
     )
     print(f"GitHub review summary {outcome}.")
+
+
+def command_run(args):
+    client = _client()
+    pr = client.get_pull_request(args.repo, args.pr)
+    if pr.head_sha != args.head_sha:
+        raise ValueError(
+            "PR head changed before review; retry the workflow against the latest commit"
+        )
+    config_path = Path(args.config) if args.config else None
+    config = load_config(config_path, workflow_max=args.max_comments)
+    result = analyze_pull_request(pr, config)
+    findings = validate_findings(pr, list(result.findings))
+    routes = []
+    for finding in findings:
+        serialized = finding.to_dict()
+        routes.append(
+            {
+                "finding_title": finding.title,
+                "fingerprint": finding.fingerprint,
+                **route_finding(serialized),
+            }
+        )
+    write_json(artifact_path(INGEST_DIR, args.pr, "metadata"), pr.to_dict())
+    write_json(
+        artifact_path(INGEST_DIR, args.pr, "findings"),
+        [finding.to_dict() for finding in findings],
+    )
+    write_json(artifact_path(INGEST_DIR, args.pr, "routes"), routes)
+    if args.publish:
+        publication = publish_review(
+            client,
+            args.repo,
+            args.pr,
+            pr.head_sha,
+            findings,
+            routes,
+            reviewed_files=result.reviewed_files,
+            skipped_files=result.skipped_files,
+            max_comments=config.max_inline_comments,
+        )
+        print(
+            f"Review published: {publication.posted} inline, "
+            f"{publication.duplicates} duplicate(s), {publication.overflow} overflow."
+        )
+    else:
+        print(json.dumps([finding.to_dict() for finding in findings], indent=2))
 
 
 def _run_genesis(args):
@@ -85,6 +139,14 @@ def build_parser():
     publish.add_argument("--repo", required=True)
     publish.add_argument("--pr", type=int, required=True)
     publish.set_defaults(handler=command_publish)
+    run = commands.add_parser("run")
+    run.add_argument("--repo", required=True)
+    run.add_argument("--pr", type=int, required=True)
+    run.add_argument("--head-sha", required=True)
+    run.add_argument("--config", default="pr-review.yaml")
+    run.add_argument("--max-comments", type=int, default=20)
+    run.add_argument("--publish", action="store_true")
+    run.set_defaults(handler=command_run)
     genesis = commands.add_parser("genesis")
     genesis.add_argument("genesis_args", nargs=argparse.REMAINDER)
     genesis.set_defaults(handler=_run_genesis)
@@ -95,5 +157,5 @@ def main():
     args = build_parser().parse_args()
     try:
         args.handler(args)
-    except (OSError, ValueError, RuntimeError) as exc:
+    except (OSError, TypeError, ValueError, RuntimeError) as exc:
         raise SystemExit(f"error: {exc}") from exc
