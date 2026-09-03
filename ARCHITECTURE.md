@@ -3,7 +3,8 @@
 ## Flow
 
 ```text
-GitHub PR event
+GitHub PR event in any configured owned repository
+    -> pinned reusable workflow (`v1.0.0`)
     -> GitHub adapter (authenticated fetch, timeout, schema checks)
     -> local ingestion artifact (normalized changed files and patches)
     -> deterministic reviewer (added lines only)
@@ -22,9 +23,15 @@ Deterministic checks run before any future LLM reviewer because they are cheap, 
 to anchor to exact added lines. The `Finding` model is the boundary for future model output: an LLM
 may propose findings, but the same evidence validation and routing must run before publication.
 
-Publishing is summary-only in this release. Inline comments require reliable diff-position mapping
-and idempotency at comment granularity; publishing them prematurely risks misplaced and duplicate
-feedback. Automatic code changes are deliberately excluded because confidence is not authorization.
+Publishing uses GitHub's line-based review API with the PR head SHA, path, new-file line, and
+`side=RIGHT`. A SHA-bound fingerprint suppresses duplicate comments on reruns. New commits receive new
+fingerprints so GitHub can preserve prior comments as outdated history. Automatic code changes remain
+excluded because confidence is not authorization.
+
+The workflow is reusable instead of a hosted GitHub App for v1: it centralizes implementation while
+avoiding a webhook service, queue, database, and private-key custody. Each owned repository grants a
+short-lived workflow token and calls an immutable release tag. Fork PRs are deferred because their
+write-token security model needs a separately threat-modeled workflow.
 
 ## Trust boundaries
 

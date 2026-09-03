@@ -9,7 +9,7 @@ description = "Evidence-grounded, GitHub-native pull request reviewer"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
-dependencies = []
+dependencies = ["PyYAML>=6.0.2,<7"]
 
 [project.scripts]
 pr-review = "ai_pr_review_agent.cli:main"

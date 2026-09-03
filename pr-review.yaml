@@ -1,0 +1,9 @@
+enabled_rules:
+  - PY001
+  - SEC001
+exclude_paths:
+  - "**/vendor/**"
+  - "**/generated/**"
+  - "**/dist/**"
+  - "**/build/**"
+max_inline_comments: 20
