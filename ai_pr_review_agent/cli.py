@@ -1,4 +1,4 @@
-"""Command-line orchestration for local use and CI."""
+"""Command-line orchestration for the central reusable reviewer."""
 
 from __future__ import annotations
 
@@ -6,139 +6,68 @@ import argparse
 import json
 import os
 from pathlib import Path
-from typing import Any
 
 from ai_pr_review_agent.config import load_config
 from ai_pr_review_agent.github import GitHubClient
-from ai_pr_review_agent.models import PullRequest
-from ai_pr_review_agent.publisher import publish_review, publish_summary
-from ai_pr_review_agent.reviewer import analyze_pull_request, review_pull_request, validate_findings
+from ai_pr_review_agent.publisher import publish_review
+from ai_pr_review_agent.reviewer import analyze_pull_request, validate_findings
 from ai_pr_review_agent.router import route_finding
-from ai_pr_review_agent.storage import artifact_path, read_json, write_json
+from ai_pr_review_agent.storage import artifact_path, write_json
 
 INGEST_DIR = Path("ingested")
 
 
-def _client() -> GitHubClient:
-    return GitHubClient(os.environ.get("GITHUB_TOKEN", ""))
-
-
-def _load_pr(number: int) -> PullRequest:
-    return PullRequest.from_dict(read_json(artifact_path(INGEST_DIR, number, "metadata")))
-
-
-def _load_list(number: int, kind: str) -> list[dict[str, Any]]:
-    value = read_json(artifact_path(INGEST_DIR, number, kind))
-    if not isinstance(value, list):
-        raise TypeError(f"{kind} artifact must be a JSON array")
-    return value
-
-
-def command_ingest(args):
-    pr = _client().get_pull_request(args.repo, args.pr)
-    write_json(artifact_path(INGEST_DIR, args.pr, "metadata"), pr.to_dict())
-    print(f"Ingested {args.repo}#{args.pr}: {len(pr.files)} changed file(s).")
-
-
-def command_review(args):
-    findings = [item.to_dict() for item in review_pull_request(_load_pr(args.pr))]
-    write_json(artifact_path(INGEST_DIR, args.pr, "findings"), findings)
-    print(json.dumps(findings, indent=2, ensure_ascii=False))
-
-
-def command_route(args):
-    routes = []
-    for finding in _load_list(args.pr, "findings"):
-        routes.append(
-            {
-                "finding_title": finding.get("title", "unknown"),
-                "fingerprint": finding.get("fingerprint", ""),
-                **route_finding(finding),
-            }
-        )
-    write_json(artifact_path(INGEST_DIR, args.pr, "routes"), routes)
-    print(json.dumps(routes, indent=2, ensure_ascii=False))
-
-
-def command_publish(args):
-    outcome = publish_summary(
-        _client(),
-        args.repo,
-        args.pr,
-        _load_list(args.pr, "findings"),
-        _load_list(args.pr, "routes"),
-    )
-    print(f"GitHub review summary {outcome}.")
-
-
-def command_run(args):
-    client = _client()
-    pr = client.get_pull_request(args.repo, args.pr)
-    if pr.head_sha != args.head_sha:
-        raise ValueError(
-            "PR head changed before review; retry the workflow against the latest commit"
-        )
-    config_path = Path(args.config) if args.config else None
-    config = load_config(config_path, workflow_max=args.max_comments)
-    result = analyze_pull_request(pr, config)
-    findings = validate_findings(pr, list(result.findings))
-    routes = []
-    for finding in findings:
-        serialized = finding.to_dict()
-        routes.append(
-            {
-                "finding_title": finding.title,
-                "fingerprint": finding.fingerprint,
-                **route_finding(serialized),
-            }
-        )
-    write_json(artifact_path(INGEST_DIR, args.pr, "metadata"), pr.to_dict())
+def command_run(args: argparse.Namespace) -> None:
+    client = GitHubClient(os.environ.get("GITHUB_TOKEN", ""))
+    pull_request = client.get_pull_request(args.repo, args.pr)
+    if pull_request.head_sha != args.head_sha:
+        raise ValueError("PR head changed; retry against the latest commit")
+    config = load_config(Path(args.config) if args.config else None, workflow_max=args.max_comments)
+    review = analyze_pull_request(pull_request, config)
+    findings = validate_findings(pull_request, list(review.findings))
+    routes = [
+        {
+            "finding_title": finding.title,
+            "fingerprint": finding.fingerprint,
+            **route_finding(finding.to_dict()),
+        }
+        for finding in findings
+    ]
+    write_json(artifact_path(INGEST_DIR, args.pr, "metadata"), pull_request.to_dict())
     write_json(
         artifact_path(INGEST_DIR, args.pr, "findings"),
         [finding.to_dict() for finding in findings],
     )
     write_json(artifact_path(INGEST_DIR, args.pr, "routes"), routes)
-    if args.publish:
-        publication = publish_review(
-            client,
-            args.repo,
-            args.pr,
-            pr.head_sha,
-            findings,
-            routes,
-            reviewed_files=result.reviewed_files,
-            skipped_files=result.skipped_files,
-            max_comments=config.max_inline_comments,
-        )
-        print(
-            f"Review published: {publication.posted} inline, "
-            f"{publication.duplicates} duplicate(s), {publication.overflow} overflow."
-        )
-    else:
+    if not args.publish:
         print(json.dumps([finding.to_dict() for finding in findings], indent=2))
+        return
+    result = publish_review(
+        client,
+        args.repo,
+        args.pr,
+        pull_request.head_sha,
+        findings,
+        routes,
+        reviewed_files=review.reviewed_files,
+        skipped_files=review.skipped_files,
+        max_comments=config.max_inline_comments,
+    )
+    print(
+        f"Review published: {result.posted} inline, {result.updated} updated, "
+        f"{result.duplicates} duplicates, {result.overflow} overflow."
+    )
 
 
-def _run_genesis(args):
+def run_genesis(args: argparse.Namespace) -> None:
     from ai_pr_review_agent.genesis import main as genesis_main
 
     genesis_main(args.genesis_args)
 
 
-def build_parser():
-    parser = argparse.ArgumentParser(prog="pr-review", description="Evidence-grounded PR reviewer")
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="pr-review", description="Central PR reviewer")
     commands = parser.add_subparsers(dest="command", required=True)
-    ingest = commands.add_parser("ingest")
-    ingest.add_argument("--repo", required=True)
-    ingest.add_argument("--pr", type=int, required=True)
-    ingest.set_defaults(handler=command_ingest)
-    for name, handler in (("review", command_review), ("route", command_route)):
-        command = commands.add_parser(name)
-        command.add_argument("--pr", type=int, required=True)
-        command.set_defaults(handler=handler)
-    publish = commands.add_parser("publish")
-    publish.add_argument("--repo", required=True)
-    publish.add_argument("--pr", type=int, required=True)
-    publish.set_defaults(handler=command_publish)
     run = commands.add_parser("run")
     run.add_argument("--repo", required=True)
     run.add_argument("--pr", type=int, required=True)
@@ -149,11 +78,11 @@ def build_parser():
     run.set_defaults(handler=command_run)
     genesis = commands.add_parser("genesis")
     genesis.add_argument("genesis_args", nargs=argparse.REMAINDER)
-    genesis.set_defaults(handler=_run_genesis)
+    genesis.set_defaults(handler=run_genesis)
     return parser
 
 
-def main():
+def main() -> None:
     args = build_parser().parse_args()
     try:
         args.handler(args)

@@ -2,7 +2,7 @@
 
 An evidence-grounded PR reviewer that uses GitHub itself as the user interface. The agent ingests
 changed files, reviews added diff lines, routes risky or uncertain findings to humans, and can publish
-a single idempotent review summary. It never changes repository code.
+line-level findings plus one idempotent review summary. It never changes repository code.
 
 ## Why there is no custom UI
 
@@ -18,10 +18,7 @@ for the architectural reasoning.
 Python 3.11 or newer is required.
 
 ```shell
-python -m ai_pr_review_agent ingest --repo OWNER/REPOSITORY --pr 123
-python -m ai_pr_review_agent review --pr 123
-python -m ai_pr_review_agent route --pr 123
-python -m ai_pr_review_agent publish --repo OWNER/REPOSITORY --pr 123
+python -m ai_pr_review_agent run --repo OWNER/REPOSITORY --pr 123 --head-sha COMMIT_SHA
 python -m ai_pr_review_agent genesis check
 ```
 

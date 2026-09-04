@@ -38,7 +38,6 @@ def render_inline_comment(finding: Finding, classification: str) -> str:
 
 def render_summary(
     findings: list[dict[str, Any]] | list[Finding],
-    routes: list[dict[str, Any]],
     *,
     reviewed_files: int = 0,
     skipped_files: tuple[str, ...] = (),
@@ -142,7 +141,6 @@ def publish_review(
         )
     summary = render_summary(
         findings,
-        routes,
         reviewed_files=reviewed_files,
         skipped_files=skipped_files,
         posted=len(new_comments),
@@ -154,17 +152,3 @@ def publish_review(
     return PublicationResult(
         len(new_comments), updated, duplicates, len(overflow_findings), summary_action
     )
-
-
-def publish_summary(
-    client: GitHubClient,
-    repository: str,
-    pr_number: int,
-    findings: list[dict[str, Any]],
-    routes: list[dict[str, Any]],
-) -> str:
-    """Backward-compatible summary-only publisher."""
-    return _upsert_summary(client, repository, pr_number, render_summary(findings, routes))
-
-
-MARKER = SUMMARY_MARKER

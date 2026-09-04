@@ -2,11 +2,11 @@
   "$comment": "cause is imported by effect; regenerate when module boundaries change",
   "project": ".",
   "generated": "2026-09-03T00:00:00Z",
-  "nodes": ["cli", "genesis", "github", "models", "publisher", "reviewer", "router", "storage"],
+  "nodes": ["cli", "config", "genesis", "github", "models", "publisher", "reviewer", "router", "storage"],
   "edges": [
     ["github", "cli"], ["models", "github"], ["models", "reviewer"],
     ["storage", "cli"], ["reviewer", "cli"], ["router", "cli"],
-    ["publisher", "cli"], ["github", "publisher"]
+    ["publisher", "cli"], ["github", "publisher"], ["config", "cli"], ["config", "reviewer"]
   ],
   "invariants": {
     "untrusted_input_validation": "All external PR content is schema-checked and is never executed or used as an unrestricted filesystem path.",
