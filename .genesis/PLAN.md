@@ -7,9 +7,10 @@ independent verification verdict are recorded.
 ## Architectural choice
 
 The project uses a GitHub-native interface around a provider-independent CLI core. This avoids a
-premature custom UI, keeps review feedback where developers already work, and lets local tests exercise
-the same domain pipeline as CI. Deterministic checks precede any future LLM analysis; all findings pass
-through evidence validation and policy routing before publication. See ADR-0001.
+premature custom UI, keeps review feedback where developers already work, and lets local tests
+exercise the same domain pipeline as CI. Deterministic checks precede any future LLM analysis; all
+findings pass through evidence validation and policy routing before publication. See ADR-0001 and
+ADR-0002.
 
 ## Ordered milestones
 
@@ -17,11 +18,11 @@ through evidence validation and policy routing before publication. See ADR-0001.
 2. **M1 — Package and CLI foundation:** installable package, unified commands, models, and tests.
 3. **M2 — Real GitHub ingestion:** authenticated, paginated, bounded ingestion of normalized PR data.
 4. **M3 — Review engine:** analyze added lines and emit verifiable, typed findings.
-5. **M4 — GitHub publishing:** create or update one comment-only review summary.
-6. **M5 — Evaluation and production readiness:** expand rules/LLM support only behind measured quality gates.
+5. **M4 — GitHub publishing:** publish added-line comments and one idempotent summary.
+6. **M5 — Future analyzer evaluation:** add new analyzers only behind measured quality gates.
+7. **M6 — Reusable distribution:** provide the versioned central workflow and inline publication.
 
 ## Current status
 
-M0–M4 are implemented but remain `active`, not complete: this environment does not currently provide
-a Python runtime, so demos and tests have not produced acceptable gate evidence. M5 remains planned.
-
+M6 is active. Its implementation and local quality gates are recorded, while release tagging and the
+two-repository acceptance evidence remain outstanding. M5 remains planned for future analyzers.
