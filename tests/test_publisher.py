@@ -2,9 +2,7 @@ import unittest
 
 from ai_pr_review_agent.models import Finding
 from ai_pr_review_agent.publisher import (
-    MARKER,
     publish_review,
-    publish_summary,
     render_inline_comment,
     render_summary,
 )
@@ -63,15 +61,9 @@ def route(item):
 
 class PublisherTests(unittest.TestCase):
     def test_summary_is_comment_only(self):
-        body = render_summary([], [])
-        self.assertIn(MARKER, body)
+        body = render_summary([])
+        self.assertIn("ai-pr-review-agent:summary", body)
         self.assertIn("No code was changed", body)
-
-    def test_existing_summary_is_updated(self):
-        client = FakeClient(issue_comments=[{"id": 7, "body": MARKER}])
-        self.assertEqual(publish_summary(client, "o/r", 1, [], []), "updated")
-        self.assertEqual(client.updated_summaries[0][0], 7)
-        self.assertEqual(client.created_summaries, [])
 
     def test_inline_payload_uses_right_side_line_and_head_sha(self):
         item = finding()

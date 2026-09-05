@@ -9,7 +9,7 @@ GitHub PR event in any configured owned repository
     -> local ingestion artifact (normalized changed files and patches)
     -> deterministic reviewer (added lines only)
     -> evidence validator and confidence router
-    -> GitHub summary comment (human decision remains in GitHub)
+    -> grouped inline comments and one summary (human decision remains in GitHub)
 ```
 
 ## Why this flow
@@ -47,6 +47,6 @@ the review pipeline accepts them.
 - `storage.py`: safe artifact naming and persistence.
 - `reviewer.py`: deterministic added-line analysis and evidence anchoring.
 - `router.py`: policy decisions, separate from detection.
-- `publisher.py`: idempotent GitHub summary publication.
+- `publisher.py`: deduplicated inline reviews and idempotent summary publication.
 - `genesis.py`: lifecycle state validation and status reporting.
 

@@ -43,20 +43,6 @@ class PullRequest:
     def to_dict(self) -> dict[str, Any]:
         return {**asdict(self), "files": [asdict(item) for item in self.files]}
 
-    @classmethod
-    def from_dict(cls, value: dict[str, Any]) -> PullRequest:
-        return cls(
-            repository=str(value["repository"]),
-            number=int(value["number"]),
-            title=str(value.get("title", "")),
-            body=str(value.get("body") or ""),
-            base_sha=str(value["base_sha"]),
-            head_sha=str(value["head_sha"]),
-            html_url=str(value.get("html_url", "")),
-            files=tuple(ChangedFile.from_dict(item) for item in value.get("files", [])),
-        )
-
-
 @dataclass(frozen=True)
 class Finding:
     rule_id: str

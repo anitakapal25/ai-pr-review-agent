@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import re
 from fnmatch import fnmatch
-from pathlib import Path
 from typing import Protocol
 
 from ai_pr_review_agent.config import ReviewConfig
 from ai_pr_review_agent.models import Finding, PullRequest, ReviewResult
-from ai_pr_review_agent.storage import artifact_path, read_json
 
 HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 SECRET_ASSIGNMENT = re.compile(
@@ -117,13 +115,3 @@ def validate_findings(pr: PullRequest, findings: list[Finding]) -> list[Finding]
                 f"finding {finding.rule_id} has invalid evidence at {finding.path}:{finding.line}"
             )
     return findings
-
-
-def generate_findings(pr_id: str) -> list[dict]:
-    """Compatibility API: load an ingested PR and return serializable findings."""
-    try:
-        number = int(pr_id)
-    except ValueError as exc:
-        raise ValueError("PR identifier must be a positive integer") from exc
-    metadata = read_json(artifact_path(Path("ingested"), number, "metadata"))
-    return [finding.to_dict() for finding in review_pull_request(PullRequest.from_dict(metadata))]
