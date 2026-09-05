@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from hashlib import sha256
 from typing import Any
 
 
@@ -66,8 +67,23 @@ class Finding:
     line: int
     evidence: str
     reviewer_notes: str
+    side: str = "RIGHT"
+    head_sha: str = ""
+
+    @property
+    def fingerprint(self) -> str:
+        material = f"{self.rule_id}\0{self.path}\0{self.line}\0{self.head_sha}"
+        return sha256(material.encode("utf-8")).hexdigest()[:24]
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
+        data["fingerprint"] = self.fingerprint
         data["evidence_chain"] = [self.path, self.line, self.evidence]
         return data
+
+
+@dataclass(frozen=True)
+class ReviewResult:
+    findings: tuple[Finding, ...]
+    reviewed_files: int
+    skipped_files: tuple[str, ...]

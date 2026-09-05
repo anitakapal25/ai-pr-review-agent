@@ -14,13 +14,14 @@
     "tests": "python -m unittest discover -s tests -v",
     "lifecycle": "python -m ai_pr_review_agent genesis check"
   },
-  "active_milestone": "M0",
+  "active_milestone": "M6",
   "milestones": [
     {"id":"M0","name":"Genesis lifecycle repair","status":"active","demo":"python -m ai_pr_review_agent genesis check","freeze":[".genesis/**","ai_pr_review_agent/genesis.py","tests/test_genesis.py"],"evidence":[".genesis/evidence/M0-M4/2026-09-03-quality-gates.md"]},
     {"id":"M1","name":"Package and CLI foundation","status":"active","demo":"python -m ai_pr_review_agent --help","freeze":["ai_pr_review_agent/**","pyproject.toml","tests/**"],"evidence":[".genesis/evidence/M0-M4/2026-09-03-quality-gates.md"]},
     {"id":"M2","name":"Real GitHub ingestion","status":"active","demo":"python -m ai_pr_review_agent ingest --repo OWNER/REPO --pr NUMBER","freeze":["ai_pr_review_agent/**","tests/**"],"evidence":[".genesis/evidence/M0-M4/2026-09-03-quality-gates.md"]},
     {"id":"M3","name":"Evidence-grounded review engine","status":"active","demo":"python -m ai_pr_review_agent review --pr NUMBER","freeze":["ai_pr_review_agent/**","tests/**"],"evidence":[".genesis/evidence/M0-M4/2026-09-03-quality-gates.md"]},
     {"id":"M4","name":"GitHub-native publishing","status":"active","demo":"python -m ai_pr_review_agent publish --repo OWNER/REPO --pr NUMBER","freeze":["ai_pr_review_agent/**",".github/**","tests/**"],"evidence":[".genesis/evidence/M0-M4/2026-09-03-quality-gates.md"]},
-    {"id":"M5","name":"Evaluation and production readiness","status":"planned","demo":"python -m ai_pr_review_agent evaluate --suite data/golden_prs","freeze":["ai_pr_review_agent/**","data/**","tests/**"],"evidence":[]}
+    {"id":"M5","name":"Evaluation and production readiness","status":"planned","demo":"python -m ai_pr_review_agent evaluate --suite data/golden_prs","freeze":["ai_pr_review_agent/**","data/**","tests/**"],"evidence":[]},
+    {"id":"M6","name":"Central reusable reviewer with inline comments","status":"active","demo":"python -m ai_pr_review_agent run --repo OWNER/REPO --pr NUMBER --head-sha SHA --publish","freeze":["ai_pr_review_agent/**",".github/**","tests/**","samples/**","pr-review.yaml","README.md","ARCHITECTURE.md",".genesis/**"],"evidence":[".genesis/evidence/M6/2026-09-03-local-gates.md"]}
   ]
 }
